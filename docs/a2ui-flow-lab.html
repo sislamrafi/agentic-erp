@@ -1,0 +1,963 @@
+<title>A2UI Flow Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a protocol trace bench. Sequence lanes + live client preview on top, step notes + payload inspector below. */
+:root {
+  --bg: #eceff3; --panel: #ffffff; --panel-2: #f6f8fa; --ink: #141a22; --muted: #5a6573; --line: #d7dde4;
+  --c-user: #6b7280; --c-client: #0b8487; --c-server: #3d4fd6; --c-llm: #b86e00; --c-db: #b03d68;
+  --good: #1a7f4b; --good-bg: #e3f4ea; --warn: #9a6200; --warn-bg: #fdf1dc; --bad: #b42335; --bad-bg: #fbe5e8; --info-bg: #e6ebfb;
+  --j-key: #3d4fd6; --j-str: #0b7a5c; --j-num: #b86e00; --j-lit: #b03d68;
+  --f-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1116; --panel: #161b22; --panel-2: #11161d; --ink: #e5e9ef; --muted: #98a3b1; --line: #2a323d;
+  --c-user: #9aa3af; --c-client: #33b8bb; --c-server: #8a96ff; --c-llm: #f0a640; --c-db: #e57aa0;
+  --good: #4cc488; --good-bg: #133524; --warn: #f0b34a; --warn-bg: #3a2b10; --bad: #f2788a; --bad-bg: #3c1820; --info-bg: #1d2546;
+  --j-key: #9aa5ff; --j-str: #5fd0a6; --j-num: #f0a640; --j-lit: #e57aa0; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0e1116; --panel: #161b22; --panel-2: #11161d; --ink: #e5e9ef; --muted: #98a3b1; --line: #2a323d;
+  --c-user: #9aa3af; --c-client: #33b8bb; --c-server: #8a96ff; --c-llm: #f0a640; --c-db: #e57aa0;
+  --good: #4cc488; --good-bg: #133524; --warn: #f0b34a; --warn-bg: #3a2b10; --bad: #f2788a; --bad-bg: #3c1820; --info-bg: #1d2546;
+  --j-key: #9aa5ff; --j-str: #5fd0a6; --j-num: #f0a640; --j-lit: #e57aa0; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 14px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 40px; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--c-server); outline-offset: 2px; }
+.app { max-width: 1440px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+
+/* header */
+.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; }
+.brand h1 { font-family: var(--f-display); font-weight: 700; font-size: 30px; letter-spacing: -0.02em; margin: 0; text-wrap: balance; }
+.brand p { margin: 4px 0 0; color: var(--muted); max-width: 64ch; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+/* control bar */
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.tabs { display: flex; gap: 4px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 3px; flex-wrap: wrap; }
+.tabs button { border: 0; background: transparent; padding: 6px 12px; border-radius: 7px; font-size: 13px; color: var(--muted); }
+.tabs button[aria-selected="true"] { background: var(--panel); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.ctl { display: flex; align-items: center; gap: 6px; }
+.btn { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 500; }
+.btn:hover { background: var(--panel-2); }
+.btn.primary { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+.btn.primary:hover { opacity: .88; }
+.btn:disabled { opacity: .45; cursor: default; }
+.count { font-family: var(--f-mono); font-size: 12.5px; color: var(--muted); min-width: 92px; text-align: center; font-variant-numeric: tabular-nums; }
+.progress { flex: 1 1 160px; height: 4px; background: var(--panel-2); border-radius: 99px; overflow: hidden; min-width: 120px; }
+.progress div { height: 100%; background: var(--c-server); transition: width .3s; }
+.kbd { font-size: 11.5px; color: var(--muted); }
+
+/* grid */
+.grid { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr); grid-template-areas: "seq prev" "det insp"; gap: 14px; }
+@media (max-width: 1020px) { .grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "det" "prev" "seq" "insp"; } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; min-width: 0; display: flex; flex-direction: column; }
+.ph { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.ph h2 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.seq { grid-area: seq; } .preview { grid-area: prev; } .detail { grid-area: det; } .inspect { grid-area: insp; }
+
+/* sequence diagram */
+.lanes { display: grid; grid-template-columns: repeat(5, 1fr); padding: 10px 8px 6px; border-bottom: 1px solid var(--line); }
+.lane { text-align: center; }
+.lane b { display: block; font-size: 12.5px; }
+.lane small { color: var(--muted); font-size: 11px; }
+.lane .chip { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+.rows { position: relative; overflow-y: auto; max-height: 470px; padding: 4px 8px 10px; }
+.life { position: absolute; top: 0; bottom: 0; width: 1px; border-left: 1px dashed var(--line); pointer-events: none; }
+.srow { position: relative; display: block; width: 100%; height: 44px; border: 0; background: transparent; padding: 0; text-align: left; border-radius: 8px; }
+.srow:hover { background: var(--panel-2); }
+.srow.cur { background: var(--info-bg); }
+.srow.future { opacity: .38; }
+.srow .num { position: absolute; left: 2px; top: 4px; font-family: var(--f-mono); font-size: 10.5px; color: var(--muted); }
+.srow .lbl { position: absolute; top: 4px; font-size: 11.5px; white-space: nowrap; transform: translateX(-50%); font-family: var(--f-mono); color: var(--ink); max-width: 60%; overflow: hidden; text-overflow: ellipsis; }
+.srow .arrow { position: absolute; top: 28px; height: 2px; background: var(--col, var(--c-server)); }
+.srow .arrow::after { content: ""; position: absolute; top: -4px; border: 5px solid transparent; }
+.srow .arrow.ltr::after { right: -2px; border-left: 7px solid var(--col); border-right: 0; }
+.srow .arrow.rtl::after { left: -2px; border-right: 7px solid var(--col); border-left: 0; }
+.srow .self { position: absolute; top: 21px; transform: translateX(-50%); font-size: 10.5px; font-family: var(--f-mono); padding: 1px 8px; border-radius: 99px; border: 1.5px solid var(--col); background: var(--panel); white-space: nowrap; }
+.packet { position: absolute; top: -4px; width: 10px; height: 10px; border-radius: 50%; background: var(--col); box-shadow: 0 0 0 4px color-mix(in srgb, var(--col) 25%, transparent); }
+.packet.ltr { animation: go-r 0.9s cubic-bezier(.5,0,.3,1) both; }
+.packet.rtl { animation: go-l 0.9s cubic-bezier(.5,0,.3,1) both; }
+@keyframes go-r { from { left: 0 } to { left: calc(100% - 10px) } }
+@keyframes go-l { from { left: calc(100% - 10px) } to { left: 0 } }
+
+/* detail */
+.dbody { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px; }
+.kicker { font-family: var(--f-mono); font-size: 11.5px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; color: var(--panel); background: var(--col, var(--muted)); font-family: var(--f-body); }
+.dbody h3 { font-family: var(--f-display); font-weight: 700; font-size: 22px; letter-spacing: -0.01em; margin: 0; text-wrap: balance; }
+.dbody p { margin: 0; max-width: 72ch; }
+.roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; }
+.role { border: 1px solid var(--line); border-top: 3px solid var(--col); border-radius: 8px; padding: 8px 10px; background: var(--panel-2); min-width: 0; }
+.role h4 { margin: 0 0 3px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--col); }
+.role p { font-size: 13px; }
+.why { font-size: 13px; border-left: 3px solid var(--c-server); padding: 2px 0 2px 10px; color: var(--muted); }
+.why b { color: var(--ink); }
+.yourturn { display: flex; gap: 10px; align-items: flex-start; background: var(--warn-bg); border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent); color: var(--ink); border-radius: 8px; padding: 9px 12px; font-size: 13px; }
+.yourturn b { color: var(--warn); }
+.llmbox { border: 1px dashed var(--c-llm); border-radius: 8px; padding: 9px 12px; font-size: 13px; background: color-mix(in srgb, var(--c-llm) 7%, var(--panel)); }
+.llmbox h4 { margin: 0 0 4px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--c-llm); }
+.llmbox ol { margin: 0; padding-left: 18px; }
+
+/* inspector */
+.itabs { display: flex; gap: 2px; flex-wrap: wrap; }
+.itabs button { border: 0; background: transparent; padding: 4px 10px; border-radius: 6px; font-size: 12.5px; color: var(--muted); }
+.itabs button[aria-selected="true"] { background: var(--panel-2); color: var(--ink); font-weight: 600; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; padding: 10px 14px 0; font-size: 12px; font-family: var(--f-mono); color: var(--muted); }
+.meta code { color: var(--ink); background: var(--panel-2); border: 1px solid var(--line); padding: 1px 6px; border-radius: 5px; overflow-wrap: anywhere; }
+.codewrap { position: relative; padding: 10px 14px 14px; min-width: 0; }
+pre.code { margin: 0; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 12px; font-family: var(--f-mono); font-size: 12px; line-height: 1.55; overflow: auto; max-height: 420px; white-space: pre; }
+.copy { position: absolute; right: 22px; top: 18px; font-size: 11px; padding: 3px 8px; }
+.jk { color: var(--j-key); } .js { color: var(--j-str); } .jn { color: var(--j-num); } .jl { color: var(--j-lit); } .jc { color: var(--muted); font-style: italic; }
+
+/* preview: mock app */
+.win { margin: 12px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; background: var(--bg); min-height: 420px; }
+.wbar { display: flex; align-items: center; gap: 8px; padding: 7px 10px; background: var(--panel); border-bottom: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+.wbar .dots { display: flex; gap: 4px; } .wbar .dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); display: block; }
+.wbar label { margin-left: auto; display: flex; align-items: center; gap: 5px; cursor: pointer; }
+.chat { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; max-height: 470px; }
+.empty { margin: auto; text-align: center; color: var(--muted); font-size: 13px; padding: 30px 10px; }
+.u { align-self: flex-end; background: var(--ink); color: var(--panel); padding: 7px 12px; border-radius: 12px 12px 4px 12px; max-width: 85%; font-size: 13.5px; }
+.a { display: flex; gap: 8px; align-items: flex-start; }
+.av { width: 24px; height: 24px; border-radius: 7px; background: var(--ink); color: var(--panel); display: grid; place-items: center; font-size: 11px; font-weight: 700; flex: none; }
+.acol { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; }
+.toolchip { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; border: 1px solid var(--line); background: var(--panel); border-radius: 99px; padding: 2px 9px; color: var(--muted); width: fit-content; }
+.toolchip.run { border-color: var(--c-llm); color: var(--c-llm); }
+.toolchip .sp { width: 9px; height: 9px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin .8s linear infinite; }
+.toolchip .ok { color: var(--good); font-weight: 700; }
+@keyframes spin { to { transform: rotate(360deg) } }
+.thinking { color: var(--muted); font-size: 12px; }
+.sfc { position: relative; }
+.sfc .tag { font-family: var(--f-mono); font-size: 10.5px; color: var(--c-client); margin-top: 3px; }
+.skel { height: 92px; border-radius: 10px; background: linear-gradient(90deg, var(--panel-2) 0, var(--line) 40%, var(--panel-2) 80%); background-size: 400px 100%; animation: sh 1.3s linear infinite; }
+@keyframes sh { from { background-position: -400px 0 } to { background-position: 400px 0 } }
+.flash { animation: flash 1.2s ease-out; }
+@keyframes flash { from { box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 55%, transparent); } to { box-shadow: 0 0 0 0 transparent; } }
+.toast { position: absolute; right: 12px; bottom: 60px; background: var(--ink); color: var(--panel); font-size: 12.5px; padding: 7px 12px; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.18); }
+.comp { display: flex; gap: 6px; padding: 8px; border-top: 1px solid var(--line); background: var(--panel); }
+.comp input { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--panel-2); border-radius: 8px; padding: 7px 10px; font: inherit; font-size: 13px; color: var(--ink); }
+.hint { margin: 0 12px 12px; font-size: 12px; color: var(--muted); min-height: 18px; }
+.hint.on { color: var(--warn); }
+
+/* rendered A2UI catalog */
+.r-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.r-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; min-width: 0; }
+.r-row.sb { justify-content: space-between; } .r-row.end { justify-content: flex-end; }
+.r-grid { display: grid; gap: 8px; grid-template-columns: repeat(var(--n, 2), minmax(0, 1fr)); }
+@media (max-width: 520px) { .r-grid { grid-template-columns: minmax(0, 1fr); } }
+.r-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; min-width: 0; }
+.r-card.success { border-color: color-mix(in srgb, var(--good) 45%, transparent); background: var(--good-bg); }
+.r-h3 { font-weight: 600; font-size: 14.5px; } .r-h4 { font-weight: 600; font-size: 13.5px; } .r-cap { font-size: 12px; color: var(--muted); } .r-body { font-size: 13px; }
+.r-btn { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 5px 12px; font-size: 12.5px; font-weight: 500; }
+.r-btn.primary { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+.r-btn.ghost { border-color: transparent; color: var(--muted); }
+.r-field { display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; color: var(--muted); min-width: 0; }
+.r-field input, .r-field select { border: 1px solid var(--line); background: var(--panel); border-radius: 7px; padding: 6px 8px; font: inherit; font-size: 13px; color: var(--ink); width: 100%; }
+.r-metric { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px; min-width: 0; }
+.r-metric small { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.r-metric b { font-size: 19px; font-variant-numeric: tabular-nums; }
+.r-metric .tone { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-left: 6px; vertical-align: middle; }
+.r-alert { border-radius: 8px; padding: 8px 10px; font-size: 12.5px; border: 1px solid var(--line); }
+.r-alert b { display: block; font-size: 13px; }
+.r-alert.danger { background: var(--bad-bg); border-color: color-mix(in srgb, var(--bad) 30%, transparent); }
+.r-alert.warning { background: var(--warn-bg); border-color: color-mix(in srgb, var(--warn) 30%, transparent); }
+.r-tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+.r-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.r-table th { text-align: left; font-weight: 500; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding: 7px 9px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.r-table td { padding: 6px 9px; border-bottom: 1px solid var(--line); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.r-table tr:last-child td { border-bottom: 0; }
+.r-table .num { text-align: right; }
+.badge { display: inline-block; font-size: 10.5px; font-weight: 600; padding: 1px 7px; border-radius: 99px; text-transform: capitalize; }
+.badge.overdue { background: var(--bad-bg); color: var(--bad); } .badge.paid { background: var(--good-bg); color: var(--good); } .badge.unpaid, .badge.lead { background: var(--warn-bg); color: var(--warn); } .badge.active { background: var(--good-bg); color: var(--good); }
+.idtag { display: none; }
+.showids [data-cid] { outline: 1px dashed color-mix(in srgb, var(--c-client) 70%, transparent); outline-offset: 2px; position: relative; }
+.showids .idtag { display: block; position: absolute; top: -9px; left: 4px; font-family: var(--f-mono); font-size: 9.5px; line-height: 1; padding: 1px 4px; border-radius: 4px; background: var(--c-client); color: var(--panel); z-index: 1; pointer-events: none; }
+.dbt { padding: 10px 14px 14px; display: flex; flex-direction: column; gap: 12px; }
+.dbt h5 { margin: 0 0 4px; font-family: var(--f-mono); font-size: 12px; color: var(--c-db); }
+.changed td { background: color-mix(in srgb, var(--good) 14%, transparent); }
+.note { font-size: 12px; color: var(--muted); padding: 0 14px 12px; }
+@media (prefers-reduced-motion: reduce) { .packet, .skel, .toolchip .sp, .flash { animation: none !important; } }
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <h1>A2UI Flow Lab</h1>
+      <p>Step through one NextERP request and watch what the client, server, LLM and database each do. You'll see every request and response body (DTO) as it moves. The data is sample data and the LLM is simulated, but the message shapes match the real app.</p>
+    </div>
+    <div class="legend" aria-label="Lane colors">
+      <span><i style="background:var(--c-user)"></i>You</span>
+      <span><i style="background:var(--c-client)"></i>Client</span>
+      <span><i style="background:var(--c-server)"></i>Server</span>
+      <span><i style="background:var(--c-llm)"></i>LLM</span>
+      <span><i style="background:var(--c-db)"></i>Database</span>
+    </div>
+  </header>
+
+  <div class="bar">
+    <div class="tabs" role="tablist" aria-label="Scenario" id="scenarios"></div>
+    <div class="ctl">
+      <button class="btn" id="prev" aria-label="Previous step">Back</button>
+      <span class="count" id="count">Step 1 / 1</span>
+      <button class="btn primary" id="next">Next step</button>
+      <button class="btn" id="play">Auto-play</button>
+      <button class="btn" id="reset">Restart</button>
+    </div>
+    <div class="progress" aria-hidden="true"><div id="prog"></div></div>
+    <span class="kbd">Keys: ← → to step</span>
+  </div>
+
+  <main class="grid">
+    <section class="panel seq" aria-label="Sequence diagram">
+      <div class="ph"><h2>Sequence</h2><span class="kbd">Click any row to jump</span></div>
+      <div class="lanes" id="lanes"></div>
+      <div class="rows" id="rows"></div>
+    </section>
+
+    <section class="panel preview" aria-label="Live client preview">
+      <div class="ph"><h2>What the client shows</h2><span class="kbd">A real A2UI renderer, running in this page</span></div>
+      <div class="win" style="position:relative">
+        <div class="wbar"><span class="dots"><i></i><i></i><i></i></span>NextERP · Agent chat
+          <label for="showids"><input type="checkbox" id="showids"> Show A2UI ids</label></div>
+        <div class="chat" id="chat"></div>
+        <div id="toast"></div>
+        <form class="comp" id="composer">
+          <input id="msg" autocomplete="off" placeholder="Try: show overdue invoices · add customer Acme · build a risk report">
+          <button class="btn primary" type="submit">Send</button>
+        </form>
+      </div>
+      <p class="hint" id="hint"></p>
+    </section>
+
+    <section class="panel detail" aria-label="Step explanation">
+      <div class="ph"><h2>What is happening</h2><span class="kbd" id="dsub"></span></div>
+      <div class="dbody" id="detail"></div>
+    </section>
+
+    <section class="panel inspect" aria-label="Inspector">
+      <div class="ph"><h2>Inspector</h2>
+        <div class="itabs" role="tablist" id="itabs">
+          <button data-t="payload" aria-selected="true">Payload</button>
+          <button data-t="state">Client state</button>
+          <button data-t="llm">LLM context</button>
+          <button data-t="db">Database</button>
+        </div>
+      </div>
+      <div id="inspect"></div>
+    </section>
+  </main>
+</div>
+
+<script>
+(() => {
+const $ = (s) => document.querySelector(s);
+const clone = (o) => JSON.parse(JSON.stringify(o));
+const money = (n) => "$" + Number(n).toLocaleString("en-US", { maximumFractionDigits: 0 });
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const LANES = [
+  { id: "user", name: "You", sub: "person", col: "var(--c-user)" },
+  { id: "client", name: "Client", sub: "Next.js browser", col: "var(--c-client)" },
+  { id: "server", name: "Server", sub: "Agent Gateway", col: "var(--c-server)" },
+  { id: "llm", name: "LLM", sub: "model API", col: "var(--c-llm)" },
+  { id: "db", name: "Database", sub: "ERP data", col: "var(--c-db)" },
+];
+const LI = Object.fromEntries(LANES.map((l, i) => [l.id, i]));
+const LCOL = Object.fromEntries(LANES.map((l) => [l.id, l.col]));
+
+/* ---------------- sample data ---------------- */
+const DB0 = {
+  invoices: [
+    { id: 1043, number: "INV-1043", customer_name: "Pinecrest Hotels", due_date: "2025-12-11", amount: 9120, status: "overdue" },
+    { id: 1068, number: "INV-1068", customer_name: "Redwood Coffee", due_date: "2026-02-03", amount: 4380, status: "overdue" },
+    { id: 1072, number: "INV-1072", customer_name: "Zenith Pharma", due_date: "2026-03-19", amount: 7410, status: "overdue" },
+    { id: 1090, number: "INV-1090", customer_name: "Beacon Dental", due_date: "2026-06-27", amount: 2950, status: "overdue" },
+    { id: 1101, number: "INV-1101", customer_name: "Vista Optics", due_date: "2026-08-14", amount: 3870, status: "overdue" },
+    { id: 1112, number: "INV-1112", customer_name: "NexaCorp", due_date: "2026-11-20", amount: 3200, status: "unpaid" },
+  ],
+  customers: [
+    { id: 29, name: "Crescent Bakery", email: "accounts@crescent.com", city: "Boston", status: "active" },
+    { id: 30, name: "Driftwood Design", email: "accounts@driftwood.com", city: "Austin", status: "active" },
+  ],
+};
+
+/* ---------------- A2UI helpers (same shapes as backend/app/a2ui.py) ---------------- */
+const L = (s) => ({ literalString: String(s) });
+const C = (id, type, props) => ({ id, component: { [type]: props } });
+const toContents = (o) => Object.entries(o).map(([k, v]) =>
+  typeof v === "number" ? { key: k, valueNumber: v } : typeof v === "boolean" ? { key: k, valueBoolean: v }
+  : v && typeof v === "object" ? { key: k, valueMap: toContents(v) } : { key: k, valueString: v ?? "" });
+const fromContents = (cs) => { const o = {}; for (const c of cs || []) o[c.key] = "valueMap" in c ? fromContents(c.valueMap) : "valueNumber" in c ? c.valueNumber : "valueBoolean" in c ? c.valueBoolean : c.valueString ?? ""; return o; };
+const msgs = (sid, comps, data, root) => {
+  const m = [{ surfaceUpdate: { surfaceId: sid, components: comps } }];
+  if (data) m.push({ dataModelUpdate: { surfaceId: sid, path: "/", contents: toContents(data) } });
+  m.push({ beginRendering: { surfaceId: sid, root } });
+  return m;
+};
+const getPath = (o, p) => p.split("/").filter(Boolean).reduce((a, k) => (a == null ? a : a[k]), o);
+const setPath = (o, p, v) => { const ks = p.split("/").filter(Boolean); let c = o; ks.slice(0, -1).forEach((k) => { c[k] = c[k] && typeof c[k] === "object" ? c[k] : {}; c = c[k]; }); c[ks[ks.length - 1]] = v; };
+const resolve = (v, data) => v == null || typeof v !== "object" ? v : "path" in v ? getPath(data, v.path) : "literalString" in v ? v.literalString : "literalNumber" in v ? v.literalNumber : "literalBoolean" in v ? v.literalBoolean : v;
+const resolveCtx = (ctx, data) => Object.fromEntries((ctx || []).map((c) => [c.key, clone(resolve(c.value, data) ?? null)]));
+
+function applyA2(state, sid, messages) {
+  const prev = state.surfaces[sid];
+  let s = prev ? { ...prev, components: { ...prev.components } } : { components: {}, data: {}, root: null };
+  let fresh = false;
+  for (const m of messages) {
+    if (m.surfaceUpdate && m.surfaceUpdate.surfaceId === sid) {
+      if (!fresh) { s.components = {}; fresh = true; }
+      for (const c of m.surfaceUpdate.components) s.components[c.id] = c;
+    } else if (m.dataModelUpdate && m.dataModelUpdate.surfaceId === sid) {
+      s.data = fromContents(m.dataModelUpdate.contents);
+    } else if (m.beginRendering && m.beginRendering.surfaceId === sid) {
+      s.root = m.beginRendering.root;
+    } else if (m.deleteSurface && m.deleteSurface.surfaceId === sid) {
+      s.deleted = true;
+    }
+  }
+  s.loading = false;
+  state.surfaces[sid] = s;
+}
+
+const INV_COLS = [{ key: "number", label: "Invoice" }, { key: "customer_name", label: "Customer" }, { key: "due_date", label: "Due", type: "date" },
+  { key: "amount", label: "Amount", type: "money" }, { key: "status", label: "Status", type: "badge" }];
+const listMsgs = (sid, rows) => msgs(sid, [
+  C("col-1", "Column", { children: { explicitList: ["row-2", "table-5"] }, gap: "md" }),
+  C("row-2", "Row", { children: { explicitList: ["text-3", "text-4"] }, distribution: "spaceBetween" }),
+  C("text-3", "Text", { text: L("Overdue invoices"), usageHint: "h3" }),
+  C("text-4", "Text", { text: L(`${rows.length} records · ${money(rows.reduce((a, r) => a + r.amount, 0))}`), usageHint: "caption" }),
+  C("table-5", "DataTable", { resource: "invoices", columns: INV_COLS, rows, rowActions: [{ name: "mark_paid", label: "Mark paid" }] }),
+], null, "col-1");
+const formMsgs = (sid, pre) => msgs(sid, [
+  C("card-1", "Card", { child: "col-2" }),
+  C("col-2", "Column", { children: { explicitList: ["text-3", "grid-4", "row-9"] }, gap: "md" }),
+  C("text-3", "Text", { text: L("New customer"), usageHint: "h3" }),
+  C("grid-4", "Grid", { children: { explicitList: ["tf-5", "tf-6", "tf-7", "mc-8"] }, columns: 2 }),
+  C("tf-5", "TextField", { label: L("Name *"), text: { path: "/form/name" }, textFieldType: "shortText" }),
+  C("tf-6", "TextField", { label: L("Email"), text: { path: "/form/email" }, textFieldType: "email" }),
+  C("tf-7", "TextField", { label: L("City"), text: { path: "/form/city" }, textFieldType: "shortText" }),
+  C("mc-8", "MultipleChoice", { label: L("Status"), selections: { path: "/form/status" }, maxAllowedSelections: 1,
+    options: [{ label: L("Active"), value: "active" }, { label: L("Lead"), value: "lead" }, { label: L("Inactive"), value: "inactive" }] }),
+  C("row-9", "Row", { children: { explicitList: ["btn-10", "btn-12"] }, distribution: "end" }),
+  C("btn-10", "Button", { child: "lbl-11", variant: "ghost", action: { name: "close_surface", context: [] } }),
+  C("lbl-11", "Text", { text: L("Cancel"), usageHint: "label" }),
+  C("btn-12", "Button", { child: "lbl-13", variant: "primary", action: { name: "save_record", context: [
+    { key: "resource", value: L("customers") }, { key: "id", value: L("") }, { key: "data", value: { path: "/form" } }] } }),
+  C("lbl-13", "Text", { text: L("Create"), usageHint: "label" }),
+], { form: { name: pre.name, email: "", city: "", status: pre.status } }, "card-1");
+const successMsgs = (sid, name) => msgs(sid, [
+  C("card-1", "Card", { child: "col-2", tone: "success" }),
+  C("col-2", "Column", { children: { explicitList: ["text-3", "text-4"] }, gap: "xs" }),
+  C("text-3", "Text", { text: L(`Customer ${name} created`), usageHint: "h4" }),
+  C("text-4", "Text", { text: L("Saved and synced to all screens in realtime."), usageHint: "caption" }),
+], null, "card-1");
+
+/* free-form A2UI written by the LLM (with the kind of mistakes models make) */
+const REPORT_RAW = [
+  { id: "root", component: { Column: { children: { explicitList: ["t1", "g1", "a1", "a2"] } } } },
+  { id: "t1", component: { Text: { text: L("Risk report · receivables"), usageHint: "h3" } } },
+  { id: "g1", component: { Row: { children: { explicitList: ["m1", "m2", "m3"] } } } },
+  { id: "m1", component: { Type: { metric: { label: "Overdue", value: 27730, format: "money", tone: "danger" } } } },
+  { id: "m2", component: { Metric: { label: "Overdue invoices", value: 5, format: "number", tone: "warning" } } },
+  { id: "m3", component: { metric: { label: "Oldest (days)", value: 324, format: "number", tone: "warning" } } },
+  { id: "a1", component: { Alert: { title: "Largest debtor", body: "Pinecrest Hotels owes $9,120, 324 days past due.", tone: "danger" } } },
+  { id: "a2", component: { Alert: { title: "Aging risk", body: "4 of 5 overdue invoices are more than 90 days late.", tone: "warning" } } },
+];
+const CATALOG = ["Column", "Row", "Grid", "Card", "Text", "Button", "TextField", "MultipleChoice", "Metric", "Badge", "Alert", "DataTable", "KeyValue"];
+const canon = (n) => CATALOG.find((c) => c.toLowerCase() === String(n).toLowerCase());
+function normalize(comps) {
+  const out = comps.map((c) => {
+    let [name, props] = Object.entries(c.component)[0];
+    if (!canon(name) && props && typeof props === "object" && Object.keys(props).length === 1) [name, props] = Object.entries(props)[0];
+    return { id: c.id, component: { [canon(name)]: props } };
+  });
+  const kind = Object.fromEntries(out.map((c) => [c.id, Object.keys(c.component)[0]]));
+  for (const c of out) {
+    const row = c.component.Row, kids = row?.children?.explicitList || [];
+    if (row && kids.length && kids.every((k) => kind[k] === "Metric")) c.component = { Grid: { children: { explicitList: kids }, columns: kids.length } };
+  }
+  return out;
+}
+
+/* ---------------- scenarios ---------------- */
+const SYS = { role: "system", content: "You are NextERP Agent, the AI operator of an ERP for SMBs. Today: 2026-10-31.\nData model: invoices(number, customer_id, issue_date, due_date, amount, status: draft|unpaid|paid|overdue), customers(name, email, city, status: active|lead|inactive), …\nRules: whenever the user wants to SEE data, call a show_* tool so they get a live A2UI surface. To add data with missing details, call show_form with a prefill. Use render_ui only for custom layouts. Reply with a short markdown summary; never dump tables in text." };
+const TOOLS_SHORT = ["query_records", "aggregate", "business_summary", "create_record", "update_record", "delete_record", "show_table", "show_form", "show_record", "show_chart", "show_dashboard", "show_reports", "render_ui"];
+const toolDef = (name, desc, props) => ({ type: "function", function: { name, description: desc, parameters: { type: "object", properties: props } } });
+const asst = (s) => s.chat[s.chat.length - 1];
+const S = (from, to, kind, label, title, o) => ({ from, to, kind, label, title, ...o });
+const chunkLines = (parts) => parts.map((p) => "data: " + JSON.stringify(p)).join("\n");
+
+function scenarioTable(msg) {
+  const sid = "chat-c7a1";
+  const spec = { screen: "list", params: { resource: "invoices", filters: { status: "overdue" }, title: "Overdue invoices", limit: 25, compact: true } };
+  const args = { resource: "invoices", filters: { status: "overdue" }, title: "Overdue invoices" };
+  const call = { id: "call_7f3a", type: "function", function: { name: "show_table", arguments: JSON.stringify(args) } };
+  const overdue = (s) => s.db.invoices.filter((r) => r.status === "overdue");
+  const answer = "You have **5 overdue invoices** worth **$27,730**. Pinecrest Hotels owes the most: $9,120, 324 days past due. Click *Mark paid* on a row when the money arrives.";
+  return [
+    S("user", "client", "Input", "type + Enter", "You send a message", {
+      what: "You type a question in the chat box and press Enter. Nothing has left the browser yet.",
+      client: "Adds your bubble to the chat and prepares a streaming request.", server: "Not involved yet.",
+      why: "The chat is just another client of the same server API that the menu pages use.",
+      meta: ["Browser event", "keyboard submit"], payload: () => ({ event: "submit", text: msg }),
+      apply: (s) => s.chat.push({ role: "user", text: msg }) }),
+    S("client", "server", "HTTP", "POST /api/chat", "Client opens a streaming chat request", {
+      what: "The client POSTs the message. The response is not one JSON body. It is a Server-Sent Events (SSE) stream that stays open while the agent works.",
+      client: "Sends the message with the user's JWT, then reads the response body chunk by chunk.",
+      server: "Checks the JWT, creates conversation #42, saves your message and loads the last 16 messages as history.",
+      why: "Streaming lets the user see progress (thinking, tools, screens, text) instead of waiting for one big answer.",
+      meta: ["HTTP request", "POST /api/chat", "Authorization: Bearer eyJhbGci…"],
+      payload: () => ({ message: msg, conversation_id: null }),
+      apply: (s) => s.chat.push({ role: "assistant", parts: [], thinking: true }) }),
+    S("server", "client", "SSE", "event: conversation", "Server confirms the conversation", {
+      what: "The first event on the stream tells the client which conversation it is in.",
+      client: "Stores id 42 so follow-up messages continue this chat. Shows 'Thinking…'.", server: "Keeps the stream open and moves on to the LLM.",
+      meta: ["SSE event", "data: {…}\\n\\n"], payload: () => ({ type: "conversation", id: 42, title: msg.slice(0, 60) }) }),
+    S("server", "llm", "HTTP", "POST /chat/completions", "Server asks the LLM what to do", {
+      what: "The server sends the system prompt, the history, your message and the definitions of all 13 tools. It asks for a streamed reply.",
+      server: "Builds the prompt from the data model and the rules, and attaches the tool list in OpenAI function format.",
+      llm: "Reads everything and decides between writing text or calling tools.",
+      llmSteps: ["The system prompt says: when the user wants to SEE data, call a show_* tool.", "\"Which invoices are overdue\" asks to see records, so a show_* tool fits.", "show_table takes a resource and filters, which match invoices with status overdue."],
+      why: "The model never gets database access. It only gets tool descriptions, and the server decides what each tool really does.",
+      meta: ["HTTP request", "POST {LLM_BASE_URL}/chat/completions", "stream: true"],
+      payload: (s) => ({ model: "<LLM model>", stream: true, temperature: 0.3, messages: s.llm, tools: [
+        toolDef("show_table", "Render a LIVE interactive A2UI table (with edit/delete/search) in the chat.", { resource: { type: "string", enum: ["customers", "products", "invoices", "orders", "expenses", "employees"] }, filters: { type: "object" }, title: { type: "string" } }),
+        "… 12 more: " + TOOLS_SHORT.filter((t) => t !== "show_table").join(", ")] }),
+      apply: (s) => { s.llm = [SYS, { role: "user", content: msg }]; } }),
+    S("llm", "server", "Stream", "tool_call deltas", "LLM streams back a tool call, piece by piece", {
+      what: "Instead of text, the model streams a tool call. The tool name comes first, then the JSON arguments arrive in fragments.",
+      llm: "Emits a tool call to show_table with resource invoices and a status filter.",
+      server: "Concatenates the argument fragments by index until finish_reason is tool_calls, then parses the JSON.",
+      llmSteps: ["Fragments can split anywhere, even mid-word, so the server never parses before the stream ends.", "finish_reason: tool_calls tells the server to run tools rather than finish."],
+      meta: ["SSE stream from the LLM", "chunked deltas"],
+      payloadText: () => chunkLines([
+        { choices: [{ delta: { tool_calls: [{ index: 0, id: "call_7f3a", type: "function", function: { name: "show_table", arguments: "" } }] } }] },
+        { choices: [{ delta: { tool_calls: [{ index: 0, function: { arguments: "{\"resource\": \"invo" } }] } }] },
+        { choices: [{ delta: { tool_calls: [{ index: 0, function: { arguments: "ices\", \"filters\": {\"status\": \"over" } }] } }] },
+        { choices: [{ delta: { tool_calls: [{ index: 0, function: { arguments: "due\"}, \"title\": \"Overdue invoices\"}" } }] } }] },
+        { choices: [{ delta: {}, finish_reason: "tool_calls" }] }]) + "\ndata: [DONE]\n\n# assembled by the server:\n" + JSON.stringify({ id: call.id, name: "show_table", arguments: args }, null, 2),
+      apply: (s) => s.llm.push({ role: "assistant", content: null, tool_calls: [call] }) }),
+    S("server", "client", "SSE", "event: tool_start", "Client shows a progress chip", {
+      what: "Before running the tool, the server tells the client which tool is starting.",
+      client: "Renders a spinning chip, 'Building table'.", server: "Starts running the tool.",
+      meta: ["SSE event"], payload: () => ({ type: "tool_start", id: call.id, name: "show_table", label: "Building table", args }),
+      apply: (s) => { const a = asst(s); a.thinking = false; a.parts.push({ t: "tool", label: "Building table", status: "run" }); } }),
+    S("server", "db", "SQL", "SELECT … overdue", "The UI tool reads real data", {
+      what: "show_table first reads the records, so the model gets real facts to talk about.",
+      server: "Runs query_records(invoices, status=overdue) through SQLAlchemy.",
+      why: "The numbers come from the database, never from the model, so the table cannot be made up.",
+      meta: ["SQL query"], payload: () => ({ sql: "SELECT * FROM invoices WHERE lower(status) = 'overdue' ORDER BY issue_date DESC LIMIT 10" }) }),
+    S("db", "server", "SQL", "5 rows", "Database returns the rows", {
+      what: "Five overdue invoices come back.", server: "Serializes rows to JSON and adds customer names.",
+      meta: ["SQL result"], payload: (s) => ({ total: overdue(s).length, rows: overdue(s) }) }),
+    S("server", "client", "SSE", "tool_end + surface", "Server sends a surface spec, not UI", {
+      what: "The tool result has two parts. The model gets facts. The client gets a surface spec: a pointer naming the screen and its parameters.",
+      client: "Turns the chip green and mounts an empty surface that shows a loading skeleton.",
+      server: "Keeps the small for_model part for the next LLM call.",
+      why: "The spec is tiny and can be saved in chat history. Reloading the page refetches the same live screen.",
+      meta: ["SSE events"], payload: () => [{ type: "tool_end", id: call.id, name: "show_table", ok: true },
+        { type: "surface", part: { t: "surface", id: "c7a1", spec } }],
+      apply: (s) => { const a = asst(s); a.parts[a.parts.length - 1].status = "ok"; a.parts.push({ t: "surface", sid }); s.surfaces[sid] = { loading: true, components: {}, data: {}, root: null }; } }),
+    S("client", "server", "HTTP", "GET /api/a2ui/screen", "Client asks for the screen", {
+      what: "The surface asks the server to build the screen named in the spec.",
+      client: "LiveSurface calls the screen endpoint with name, surfaceId and params.", server: "Looks up 'list' in the screen registry.",
+      meta: ["HTTP request", "GET /api/a2ui/screen"],
+      payload: () => ({ name: "list", surfaceId: sid, params: JSON.stringify(spec.params) }) }),
+    S("server", "client", "HTTP", "200 · A2UI messages", "Server returns A2UI JSON", {
+      what: "screen_list() queries the database and builds a flat list of components, then returns three A2UI messages.",
+      server: "surfaceUpdate lists components by id. beginRendering names the root. A table screen has no form, so there is no dataModelUpdate.",
+      client: "Receives plain JSON. No HTML, no JavaScript.",
+      why: "Because it is only data, the model or the server can never inject code into the browser.",
+      meta: ["HTTP response", "200 OK", "application/json"], payload: (s) => ({ messages: listMsgs(sid, overdue(s)) }) }),
+    S("client", "client", "Render", "applyMessages + render", "Client renders from its own catalog", {
+      what: "The client applies the messages in order, then walks the tree from the root and draws each component.",
+      client: "surfaceUpdate fills a map of id → component. beginRendering sets the root. The renderer maps Column, Row, Text and DataTable to its own trusted components.",
+      why: "Turn on 'Show A2UI ids' in the preview to see which id drew each part of the screen.",
+      meta: ["Local", "no network"], payload: (s) => stateView(s, sid),
+      apply: (s) => applyA2(s, sid, listMsgs(sid, overdue(s))) }),
+    S("server", "llm", "HTTP", "POST /chat/completions #2", "Server returns the tool result to the LLM", {
+      what: "The loop continues. The server appends the assistant's tool call and the tool result, then calls the model again.",
+      llm: "Learns the table is already on screen, with 5 rows and a sample.",
+      llmSteps: ["shown_to_user: true tells the model not to repeat the table in text.", "The sample gives it facts to summarize: totals and the largest debtor."],
+      meta: ["HTTP request", "round 2 of up to 8"],
+      payload: (s) => ({ model: "<LLM model>", stream: true, messages: ["… system + user as before …", ...s.llm.slice(2)] }),
+      apply: (s) => s.llm.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify({ shown_to_user: true, total: 5, sample: overdue(s).slice(0, 2) }) }) }),
+    S("llm", "server", "Stream", "text deltas", "LLM streams its answer", {
+      what: "This time the model needs no tool. It streams plain text tokens.",
+      llm: "Writes a short markdown summary, as the system prompt asks.", server: "Forwards each token as soon as it arrives.",
+      meta: ["SSE stream from the LLM"],
+      payloadText: () => chunkLines([{ choices: [{ delta: { content: "You have **5 overdue" } }] }, { choices: [{ delta: { content: " invoices** worth **$27,730**." } }] }, { choices: [{ delta: { content: " Pinecrest Hotels owes the most…" } }] }, { choices: [{ delta: {}, finish_reason: "stop" }] }]),
+      apply: (s) => s.llm.push({ role: "assistant", content: answer }) }),
+    S("server", "client", "SSE", "event: token × n", "Client types the answer out", {
+      what: "Each token becomes a token event. The client appends it to the current text part.",
+      client: "Renders markdown as it grows, below the live table.", server: "Saves the full assistant message with its parts (tools, surface spec, text).",
+      meta: ["SSE events"], payload: () => [{ type: "token", text: "You have **5 overdue" }, { type: "token", text: " invoices** worth **$27,730**." }, "…", { type: "done" }],
+      apply: (s) => asst(s).parts.push({ t: "text", text: answer, stream: true }) }),
+    S("user", "client", "Click", "Mark paid", "Your turn: click Mark paid", {
+      await: "mark_paid",
+      what: "The table is live A2UI. Its buttons send structured actions to the server. They do not go back to the LLM.",
+      client: "On click, resolves the button's action context into plain values.", server: "Waiting.",
+      meta: ["Browser event", "click"], payload: (s) => ({ component: "table-5", action: "mark_paid", row: s.lastCtx || { resource: "invoices", id: 1043 } }) }),
+    S("client", "server", "HTTP", "POST /api/a2ui/action", "Client sends a userAction", {
+      what: "A userAction is the A2UI message from client to server: which action, from which surface and component, with what context.",
+      client: "POSTs the userAction and waits for follow-up A2UI messages.", server: "Routes it in handle_action() to the mark_paid handler.",
+      why: "No model call here. Clicks are instant, predictable and cost nothing.",
+      meta: ["HTTP request", "POST /api/a2ui/action"],
+      payload: (s) => ({ userAction: { name: "mark_paid", surfaceId: sid, sourceComponentId: "table-5", timestamp: "2026-10-31T10:24:07.311Z", context: s.lastCtx || { resource: "invoices", id: 1043 } } }) }),
+    S("server", "db", "SQL", "UPDATE … paid", "Server writes the change", {
+      what: "The invoice is marked paid.", server: "Commits the update, then publishes a data_changed event to every connected tab.",
+      meta: ["SQL"], payload: (s) => ({ sql: `UPDATE invoices SET status = 'paid' WHERE id = ${(s.lastCtx || {}).id || 1043}` }),
+      apply: (s) => { const id = (s.lastCtx || {}).id || 1043; const r = s.db.invoices.find((x) => x.id === id); if (r) { r.status = "paid"; s.changed = id; } } }),
+    S("server", "client", "HTTP", "200 · toast", "Server replies to the click", {
+      what: "This action needs no new layout, so the reply has no messages, only a toast.",
+      client: "Shows the toast.", server: "Done with the request.",
+      meta: ["HTTP response", "200 OK"], payload: (s) => ({ messages: [], toast: `Invoice ${(s.db.invoices.find((x) => x.id === ((s.lastCtx || {}).id || 1043)) || {}).number} marked as paid` }),
+      apply: (s) => { s.toast = `Invoice ${(s.db.invoices.find((x) => x.id === ((s.lastCtx || {}).id || 1043)) || {}).number} marked as paid`; } }),
+    S("server", "client", "SSE", "GET /api/events · data_changed", "Realtime event reaches every tab", {
+      what: "Every open tab keeps one event stream. The server pushes data_changed to all of them, not only to the one that clicked.",
+      client: "Tells every live surface. Surfaces showing invoices schedule a refresh about 250 ms later.",
+      why: "The agent, the buttons and ERP webhooks all publish the same event, so every screen stays in sync.",
+      meta: ["SSE event", "GET /api/events?token=…"], payload: (s) => ({ type: "data_changed", resource: "invoices", action: "updated", id: (s.lastCtx || {}).id || 1043, source: "ui" }) }),
+    S("client", "server", "HTTP", "GET screen (refresh)", "Live surface re-renders with fresh data", {
+      what: "The surface fetches its screen again and applies the new messages. The paid invoice drops out of the overdue table.",
+      client: "Replaces the components and flashes the surface to show it changed.", server: "Builds the same screen with new data.",
+      meta: ["HTTP request + response", "same spec as before"], payload: (s) => ({ request: { name: "list", surfaceId: sid }, response_rows: overdue(s).length, messages: listMsgs(sid, overdue(s)) }),
+      apply: (s) => { applyA2(s, sid, listMsgs(sid, overdue(s))); s.flash = sid; } }),
+  ];
+}
+
+function scenarioForm(msg) {
+  const sid = "chat-f21b";
+  const nameGuess = (msg.match(/(?:customer|called|named)\s+([A-Z][\w&.-]*(?:\s+[A-Z][\w&.-]*)*)/) || [])[1] || "Acme Robotics";
+  const pre = { name: nameGuess, status: "lead" };
+  const spec = { screen: "form", params: { resource: "customers", id: null, prefill: pre }, live: false };
+  const call = { id: "call_a91c", type: "function", function: { name: "show_form", arguments: JSON.stringify({ resource: "customers", prefill: pre }) } };
+  const answer = `I've opened a customer form for **${nameGuess}** marked as a lead. Add an email and city, then press **Create**.`;
+  const formData = (s) => ({ ...{ name: pre.name, email: "", city: "", status: pre.status }, ...(session.draft[sid] || {}) });
+  return [
+    S("user", "client", "Input", "type + Enter", "You ask to add a customer", {
+      what: "You ask for a new customer but give only a name.", client: "Adds your bubble.", server: "Not involved yet.",
+      meta: ["Browser event"], payload: () => ({ event: "submit", text: msg }), apply: (s) => s.chat.push({ role: "user", text: msg }) }),
+    S("client", "server", "HTTP", "POST /api/chat", "Client opens the chat stream", {
+      what: "Same request as every chat turn.", client: "Starts reading the SSE stream.", server: "Saves the message, loads history.",
+      meta: ["HTTP request", "POST /api/chat"], payload: () => ({ message: msg, conversation_id: 42 }),
+      apply: (s) => s.chat.push({ role: "assistant", parts: [], thinking: true }) }),
+    S("server", "llm", "HTTP", "POST /chat/completions", "LLM decides how to add the record", {
+      what: "The server sends the prompt and tools. The model has two options: create_record directly, or show_form.",
+      llm: "Chooses show_form because email and city are missing.",
+      llmSteps: ["System rule: to add data with missing details, call show_form with a prefill.", "It knows the name. 'lead' is a sensible status for someone new.", "It does not invent an email address."],
+      meta: ["HTTP request"], payload: (s) => ({ model: "<LLM model>", stream: true, messages: s.llm, tools: ["show_form", "create_record", "… 11 more"] }),
+      apply: (s) => { s.llm = [SYS, { role: "user", content: msg }]; } }),
+    S("llm", "server", "Stream", "tool_call show_form", "LLM calls show_form with a prefill", {
+      what: "The tool call arrives in fragments and is assembled as before.", llm: "Sends resource customers and a prefill object.",
+      server: "Parses the arguments and runs show_form.",
+      meta: ["SSE stream from the LLM"], payloadText: () => "# assembled tool call\n" + JSON.stringify({ id: call.id, name: "show_form", arguments: { resource: "customers", prefill: pre } }, null, 2),
+      apply: (s) => s.llm.push({ role: "assistant", content: null, tool_calls: [call] }) }),
+    S("server", "client", "SSE", "tool_start → surface", "Server sends a form spec with live: false", {
+      what: "Same two-part result. The spec carries live: false.",
+      client: "Mounts the surface. live: false means realtime events will not reload it, so your typing is never wiped.",
+      server: "Tells the model: 'Form displayed to the user. They will fill and submit it.'",
+      meta: ["SSE events"], payload: () => [{ type: "tool_start", name: "show_form", label: "Building form" }, { type: "tool_end", ok: true }, { type: "surface", part: { t: "surface", id: "f21b", spec } }],
+      apply: (s) => { const a = asst(s); a.thinking = false; a.parts.push({ t: "tool", label: "Building form", status: "ok" }, { t: "surface", sid }); s.surfaces[sid] = { loading: true, components: {}, data: {}, root: null }; } }),
+    S("client", "server", "HTTP", "GET /api/a2ui/screen", "Client fetches the form screen", {
+      what: "The surface asks for screen 'form' with the prefill.", client: "Waits with a skeleton.", server: "Runs screen_form(), which maps each customer field to an A2UI input.",
+      meta: ["HTTP request"], payload: () => ({ name: "form", surfaceId: sid, params: JSON.stringify(spec.params) }) }),
+    S("server", "client", "HTTP", "200 · A2UI + data model", "Server returns components and a data model", {
+      what: "This time there is a dataModelUpdate. Inputs are bound to paths like /form/email instead of holding values themselves.",
+      server: "TextField.text = {path: \"/form/name\"}. The Create button's context includes data = {path: \"/form\"}.",
+      client: "Will keep the data model separate from the layout.",
+      why: "Separating data from layout lets the client update a value without rebuilding the screen.",
+      meta: ["HTTP response", "200 OK"], payload: () => ({ messages: formMsgs(sid, pre) }) }),
+    S("client", "client", "Render", "render + bind", "Form renders. Try typing in it.", {
+      what: "The renderer draws the inputs from the catalog and binds each one to its path. Type in the preview and watch Client state → dataModel change on every keystroke.",
+      client: "On every keystroke, setPath('/form/email', value) updates the local data model only. Nothing is sent yet.",
+      why: "Typing costs no network calls. The server only sees the data when you press a button.",
+      meta: ["Local", "two-way binding"], payload: (s) => stateView(s, sid),
+      apply: (s) => { applyA2(s, sid, formMsgs(sid, pre)); s.surfaces[sid].data.form = formData(s); } }),
+    S("server", "client", "SSE", "tokens + done", "LLM's short reply arrives", {
+      what: "After the tool result, the model replies with one sentence asking you to finish the form.",
+      llm: "Explains what it did. It does not ask you to type details in chat.", client: "Shows the text under the form.",
+      meta: ["SSE events"], payload: () => [{ type: "token", text: "I've opened a customer form…" }, { type: "done" }],
+      apply: (s) => { asst(s).parts.push({ t: "text", text: answer, stream: true }); s.llm.push({ role: "tool", tool_call_id: call.id, content: "Form displayed to the user. They will fill and submit it." }, { role: "assistant", content: answer }); } }),
+    S("user", "client", "Click", "Create", "Your turn: fill the form and press Create", {
+      await: "save_record",
+      what: "Type an email and city in the preview, then press Create. Next step does it for you with sample values.",
+      client: "Resolves the button context. data = {path: \"/form\"} becomes the current form object.", server: "Waiting.",
+      meta: ["Browser event", "click"], payload: (s) => ({ component: "btn-12", action: "save_record", resolved_context: { resource: "customers", id: "", data: formData(s) } }) }),
+    S("client", "server", "HTTP", "POST /api/a2ui/action", "userAction carries the form data", {
+      what: "The context path has been replaced with real values. This is exactly what you typed.",
+      client: "POSTs the userAction.", server: "handle_action('save_record') validates the data and calls create().",
+      why: "Same router as the menu pages, so the same permission checks apply.",
+      meta: ["HTTP request", "POST /api/a2ui/action"],
+      payload: (s) => ({ userAction: { name: "save_record", surfaceId: sid, sourceComponentId: "btn-12", timestamp: "2026-10-31T10:31:52.020Z", context: { resource: "customers", id: "", data: formData(s) } } }) }),
+    S("server", "db", "SQL", "INSERT customers", "Server creates the customer", {
+      what: "A new row is inserted.", server: "Commits, then publishes data_changed for customers.",
+      meta: ["SQL"], payload: (s) => { const f = formData(s); return { sql: "INSERT INTO customers (name, email, city, status) VALUES (?, ?, ?, ?)", params: [f.name, f.email, f.city, f.status], returning: { id: 31 } }; },
+      apply: (s) => { const f = formData(s); s.db.customers.push({ id: 31, name: f.name, email: f.email, city: f.city, status: f.status }); s.changed = 31; } }),
+    S("server", "client", "HTTP", "200 · success surface", "Server replaces the form with a success card", {
+      what: "The reply contains new A2UI for the same surfaceId, so the form is swapped for a success card. freeze: true stops later refreshes.",
+      client: "Applies the messages to surface " + sid + " and shows a toast.", server: "Done.",
+      meta: ["HTTP response", "200 OK"], payload: (s) => ({ messages: successMsgs(sid, formData(s).name), toast: `Customer ${formData(s).name} created`, freeze: true }),
+      apply: (s) => { applyA2(s, sid, successMsgs(sid, formData(s).name)); s.toast = `Customer ${formData(s).name} created`; s.flash = sid; } }),
+    S("server", "client", "SSE", "data_changed · customers", "Every Customers screen updates", {
+      what: "data_changed goes to every tab. An open Customers page or dashboard refetches and shows the new row. This chat surface is frozen, so it ignores the event.",
+      client: "Live surfaces for customers reload. Frozen and live: false surfaces skip.",
+      meta: ["SSE event"], payload: () => ({ type: "data_changed", resource: "customers", action: "created", id: 31, source: "ui" }) }),
+  ];
+}
+
+function scenarioReport(msg) {
+  const sid = "agent-36a7";
+  const fixed = normalize(REPORT_RAW);
+  const rawMsgs = [{ surfaceUpdate: { surfaceId: sid, components: REPORT_RAW } }, { beginRendering: { surfaceId: sid, root: "root" } }];
+  const okMsgs = [{ surfaceUpdate: { surfaceId: sid, components: fixed } }, { beginRendering: { surfaceId: sid, root: "root" } }];
+  const call1 = { id: "call_q1", type: "function", function: { name: "query_records", arguments: "{\"resource\":\"invoices\",\"filters\":{\"status\":\"overdue\"}}" } };
+  const call2 = { id: "call_r2", type: "function", function: { name: "render_ui", arguments: "{\"root\":\"root\",\"components\":[…8 items…]}" } };
+  const answer = "Here is your receivables risk report. The biggest risk is **Pinecrest Hotels**, 324 days late. I'd start collections there today.";
+  return [
+    S("user", "client", "Input", "type + Enter", "You ask for a custom report", {
+      what: "No fixed screen matches this request, so the agent will design one.", client: "Adds your bubble.", server: "Not involved yet.",
+      meta: ["Browser event"], payload: () => ({ event: "submit", text: msg }), apply: (s) => s.chat.push({ role: "user", text: msg }) }),
+    S("client", "server", "HTTP", "POST /api/chat", "Client opens the chat stream", {
+      what: "Same chat request.", client: "Reads the stream.", server: "Saves the message and calls the LLM.",
+      meta: ["HTTP request"], payload: () => ({ message: msg, conversation_id: 42 }),
+      apply: (s) => { s.chat.push({ role: "assistant", parts: [], thinking: true }); s.llm = [SYS, { role: "user", content: msg }]; } }),
+    S("llm", "server", "Stream", "tool_call query_records", "LLM first gathers facts", {
+      what: "A good agent reads before it designs. The model calls a data tool, which shows no UI.",
+      llm: "Calls query_records for overdue invoices.", server: "Runs it.",
+      llmSteps: ["Data tools return facts only to the model.", "It will use these numbers in the report it builds."],
+      meta: ["SSE stream from the LLM"], payloadText: () => "# assembled tool call\n" + JSON.stringify({ id: call1.id, name: "query_records", arguments: JSON.parse(call1.function.arguments) }, null, 2),
+      apply: (s) => { s.llm.push({ role: "assistant", content: null, tool_calls: [call1] }); const a = asst(s); a.thinking = false; a.parts.push({ t: "tool", label: "Querying records", status: "ok" }); } }),
+    S("server", "db", "SQL", "SELECT overdue", "Server reads the invoices", {
+      what: "Data comes back and goes only to the model.", server: "Returns rows as the tool result.",
+      meta: ["SQL query + result"], payload: (s) => ({ sql: "SELECT * FROM invoices WHERE status = 'overdue'", rows: s.db.invoices.filter((r) => r.status === "overdue") }),
+      apply: (s) => s.llm.push({ role: "tool", tool_call_id: call1.id, content: "{\"total\":5,\"rows\":[…]}" }) }),
+    S("llm", "server", "Stream", "tool_call render_ui", "LLM writes A2UI itself", {
+      what: "This time the model writes the A2UI components itself. Look closely: it made mistakes. One item uses a 'Type' wrapper and another uses lowercase 'metric'.",
+      llm: "Composes a Column with a title, three metrics and two alerts, using numbers from the query.",
+      llmSteps: ["render_ui's description lists the allowed components with an example.", "Small models still drift from that: wrapper keys, wrong case, a missing root.", "That is why the server never trusts this output as-is."],
+      meta: ["SSE stream from the LLM", "raw model output"], payload: () => ({ name: "render_ui", arguments: { root: "root", components: REPORT_RAW } }),
+      apply: (s) => { s.llm.push({ role: "assistant", content: null, tool_calls: [call2] }); asst(s).parts.push({ t: "tool", label: "Designing UI", status: "run" }); } }),
+    S("server", "server", "Validate", "normalize_components()", "Server repairs and validates the UI", {
+      what: "normalize_components() unwraps 'Type', fixes the case, drops unknown component types, adds a root if it is missing, and turns a row of metrics into a grid.",
+      server: "Only components from the catalog survive. Anything else is removed before it reaches the browser.",
+      why: "A2UI is reliable because the catalog is fixed. The model can only arrange components the client already trusts.",
+      meta: ["Local on server", "before → after"],
+      payload: () => ({ before: REPORT_RAW.filter((c) => ["g1", "m1", "m3"].includes(c.id)), after: fixed.filter((c) => ["g1", "m1", "m3"].includes(c.id)) }) }),
+    S("server", "client", "SSE", "surface (inline messages)", "Server streams the A2UI inline", {
+      what: "For render_ui there is no screen to fetch. The surface event carries the A2UI messages directly.",
+      client: "Mounts the surface using the surfaceId inside the messages. A wrong id here caused the real 'stuck loading' bug you hit.",
+      meta: ["SSE event"], payload: () => ({ type: "surface", part: { t: "surface", id: sid, messages: okMsgs } }),
+      apply: (s) => { const a = asst(s); a.parts[a.parts.length - 1].status = "ok"; a.parts.push({ t: "surface", sid }); s.surfaces[sid] = { loading: true, components: {}, data: {}, root: null }; } }),
+    S("client", "client", "Render", "applyMessages + render", "Client renders the agent's design", {
+      what: "Same renderer, same catalog. Metric, Grid and Alert are drawn by trusted client code.",
+      client: "Applies surfaceUpdate and beginRendering, then renders from root.", why: "Turn on 'Show A2UI ids' to match each card to the id the model chose.",
+      meta: ["Local"], payload: (s) => stateView(s, sid), apply: (s) => applyA2(s, sid, okMsgs) }),
+    S("server", "client", "SSE", "tokens + done", "LLM adds a short summary", {
+      what: "The model sees 'Rendered.' as the tool result and writes a short recommendation.",
+      llm: "Summarizes the one action that matters most.", client: "Shows the text under the report.",
+      meta: ["SSE events"], payload: () => [{ type: "token", text: "Here is your receivables risk report…" }, { type: "done" }],
+      apply: (s) => { asst(s).parts.push({ t: "text", text: answer, stream: true }); s.llm.push({ role: "tool", tool_call_id: call2.id, content: "Rendered." }, { role: "assistant", content: answer }); } }),
+  ];
+}
+
+const SCENARIOS = [
+  { id: "table", name: "Show data", def: "Which invoices are overdue?", build: scenarioTable },
+  { id: "form", name: "Add with a form", def: "Add a new customer called Acme Robotics", build: scenarioForm },
+  { id: "report", name: "Agent-designed UI", def: "Build me a risk report on unpaid invoices", build: scenarioReport },
+];
+
+function stateView(s, sid) {
+  const sf = s.surfaces[sid];
+  if (!sf || !sf.root) return { surfaceId: sid, status: "loading" };
+  return { surfaceId: sid, root: sf.root, components: Object.fromEntries(Object.entries(sf.components).map(([id, c]) => [id, Object.keys(c.component)[0]])), dataModel: sf.data };
+}
+
+/* ---------------- engine ---------------- */
+const session = { sc: SCENARIOS[0], msg: SCENARIOS[0].def, steps: [], i: 0, draft: {}, lastCtx: null, tab: "payload", timer: null };
+let state;
+
+function replay(n) {
+  const s = { chat: [], surfaces: {}, llm: [], db: clone(DB0), toast: null, flash: null, changed: null, lastCtx: session.lastCtx };
+  for (let k = 0; k <= n; k++) { s.toast = null; s.flash = null; const st = session.steps[k]; if (st.apply) st.apply(s); }
+  return s;
+}
+
+function load(sc, msg) {
+  stop();
+  session.sc = sc; session.msg = msg || sc.def; session.steps = sc.build(session.msg); session.draft = {}; session.lastCtx = null;
+  document.querySelectorAll("#scenarios button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.id === sc.id)));
+  go(0, false);
+}
+
+function go(i, forward) {
+  session.i = Math.max(0, Math.min(session.steps.length - 1, i));
+  state = replay(session.i);
+  renderAll(forward);
+}
+
+function renderAll(forward) {
+  const st = session.steps[session.i], n = session.steps.length;
+  $("#count").textContent = `Step ${session.i + 1} / ${n}`;
+  $("#prog").style.width = ((session.i + 1) / n) * 100 + "%";
+  $("#prev").disabled = session.i === 0;
+  $("#next").disabled = session.i === n - 1;
+  $("#next").textContent = st.await ? "Do it for me" : session.i === n - 1 ? "Finished" : "Next step";
+  renderSeq(forward); renderDetail(); renderPreview(forward); renderInspect();
+  hint(st.await ? `Click "${st.await === "mark_paid" ? "Mark paid" : "Create"}" in the preview, or press "Do it for me".` : "", !!st.await);
+}
+
+function renderSeq(forward) {
+  const rows = $("#rows");
+  rows.innerHTML = "";
+  LANES.forEach((_, k) => { const l = document.createElement("div"); l.className = "life"; l.style.left = `calc(8px + (100% - 16px) * ${(k + 0.5) / 5})`; rows.appendChild(l); });
+  session.steps.forEach((st, k) => {
+    const b = document.createElement("button");
+    b.className = "srow" + (k === session.i ? " cur" : k > session.i ? " future" : "");
+    b.setAttribute("aria-label", `Step ${k + 1}: ${st.title}`);
+    b.onclick = () => go(k, k === session.i + 1);
+    const a = LI[st.from], z = LI[st.to], col = LCOL[st.from];
+    b.style.setProperty("--col", col);
+    const pos = (x) => ((x + 0.5) / 5) * 100;
+    let html = `<span class="num">${String(k + 1).padStart(2, "0")}</span>`;
+    if (a === z) {
+      html += `<span class="self" style="left:${pos(a)}%">${esc(st.label)}</span>`;
+    } else {
+      const left = Math.min(pos(a), pos(z)), w = Math.abs(pos(a) - pos(z)), dir = z > a ? "ltr" : "rtl";
+      html += `<span class="lbl" style="left:${left + w / 2}%">${esc(st.label)}</span>`;
+      html += `<span class="arrow ${dir}" style="left:${left}%;width:${w}%">${k === session.i && forward && !reduce ? `<span class="packet ${dir}"></span>` : ""}</span>`;
+    }
+    b.innerHTML = html;
+    rows.appendChild(b);
+  });
+  const cur = rows.children[LANES.length + session.i];
+  if (cur) { const top = cur.offsetTop - rows.clientHeight / 2 + 22; rows.scrollTo({ top, behavior: reduce ? "auto" : "smooth" }); }
+}
+
+function renderDetail() {
+  const st = session.steps[session.i];
+  const lane = (id) => LANES[LI[id]];
+  const dir = st.from === st.to ? `${lane(st.from).name} (local)` : `${lane(st.from).name} → ${lane(st.to).name}`;
+  $("#dsub").textContent = session.sc.name;
+  const role = (who, txt) => txt ? `<div class="role" style="--col:${LCOL[who]}"><h4>${lane(who).name} does</h4><p>${esc(txt)}</p></div>` : "";
+  $("#detail").innerHTML = `
+    <div class="kicker"><span class="pill" style="--col:${LCOL[st.from]}">${esc(st.kind)}</span>Step ${session.i + 1} of ${session.steps.length} · ${esc(dir)}</div>
+    <h3>${esc(st.title)}</h3>
+    <p>${esc(st.what || "")}</p>
+    <div class="roles">${role("client", st.client)}${role("server", st.server)}${role("llm", st.llm)}</div>
+    ${st.llmSteps ? `<div class="llmbox"><h4>Inside the LLM's decision</h4><ol>${st.llmSteps.map((x) => `<li>${esc(x)}</li>`).join("")}</ol></div>` : ""}
+    ${st.why ? `<div class="why"><b>Why it matters:</b> ${esc(st.why)}</div>` : ""}
+    ${st.await ? `<div class="yourturn"><b>Your turn.</b><span>Use the live preview. Your click creates the userAction shown in the next step.</span></div>` : ""}`;
+}
+
+/* ---- preview: chat + real A2UI renderer ---- */
+function md(t) { return esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\*(.+?)\*/g, "<i>$1</i>"); }
+function renderPreview(forward) {
+  const chat = $("#chat");
+  chat.innerHTML = "";
+  if (!state.chat.length) { chat.innerHTML = `<div class="empty">Press <b>Next step</b> to send:<br>"${esc(session.msg)}"</div>`; }
+  for (const m of state.chat) {
+    if (m.role === "user") { const d = document.createElement("div"); d.className = "u"; d.textContent = m.text; chat.appendChild(d); continue; }
+    const a = document.createElement("div"); a.className = "a";
+    a.innerHTML = `<div class="av">N</div>`;
+    const col = document.createElement("div"); col.className = "acol";
+    if (m.thinking) col.innerHTML = `<span class="thinking">Thinking…</span>`;
+    for (const p of m.parts) {
+      if (p.t === "tool") { const c = document.createElement("span"); c.className = "toolchip" + (p.status === "run" ? " run" : ""); c.innerHTML = (p.status === "run" ? `<span class="sp"></span>` : `<span class="ok">✓</span>`) + esc(p.label); col.appendChild(c); }
+      else if (p.t === "surface") {
+        const w = document.createElement("div"); w.className = "sfc";
+        const sf = state.surfaces[p.sid];
+        if (!sf || sf.loading || !sf.root) w.innerHTML = `<div class="skel"></div>`;
+        else { const r = renderNode(p.sid, sf.root); if (r) w.appendChild(r); if (state.flash === p.sid && forward && !reduce) w.classList.add("flash"); }
+        const tag = document.createElement("div"); tag.className = "tag"; tag.textContent = `A2UI surface · ${p.sid}`; w.appendChild(tag);
+        col.appendChild(w);
+      } else if (p.t === "text") {
+        const d = document.createElement("div"); d.className = "r-body";
+        const isLast = session.steps[session.i].apply && m === state.chat[state.chat.length - 1] && p === m.parts[m.parts.length - 1];
+        if (p.stream && isLast && forward && !reduce) typeOut(d, p.text); else d.innerHTML = md(p.text);
+        col.appendChild(d);
+      }
+    }
+    a.appendChild(col); chat.appendChild(a);
+  }
+  $("#toast").innerHTML = state.toast ? `<div class="toast" role="status">${esc(state.toast)}</div>` : "";
+  chat.scrollTop = chat.scrollHeight;
+}
+function typeOut(el, text) {
+  let i = 0; const step = () => { i = Math.min(text.length, i + 3); el.innerHTML = md(text.slice(0, i)); if (i < text.length) setTimeout(step, 14); };
+  step();
+}
+
+function h(tag, cls, cid) { const e = document.createElement(tag); if (cls) e.className = cls; if (cid) { e.dataset.cid = cid; const t = document.createElement("span"); t.className = "idtag"; t.textContent = cid; e.appendChild(t); } return e; }
+function renderNode(sid, id) {
+  const sf = state.surfaces[sid], c = sf.components[id];
+  if (!c) return null;
+  const [type, p] = Object.entries(c.component)[0];
+  const v = (x) => resolve(x, sf.data);
+  const kids = (el, list) => (list?.explicitList || []).forEach((k) => { const n = renderNode(sid, k); if (n) el.appendChild(n); });
+  let e;
+  switch (type) {
+    case "Column": e = h("div", "r-col", id); kids(e, p.children); break;
+    case "Row": e = h("div", "r-row" + (p.distribution === "spaceBetween" ? " sb" : p.distribution === "end" ? " end" : ""), id); kids(e, p.children); break;
+    case "Grid": e = h("div", "r-grid", id); e.style.setProperty("--n", p.columns || 2); kids(e, p.children); break;
+    case "Card": e = h("div", "r-card" + (p.tone === "success" ? " success" : ""), id); { const n = renderNode(sid, p.child); if (n) e.appendChild(n); } break;
+    case "Text": { const cls = { h2: "r-h3", h3: "r-h3", h4: "r-h4", caption: "r-cap", label: "" }[p.usageHint] ?? "r-body"; e = h("div", cls, id); e.appendChild(document.createTextNode(v(p.text) ?? "")); break; }
+    case "Button": {
+      e = h("button", "r-btn " + (p.variant || "secondary"), id); e.type = "button";
+      e.appendChild(document.createTextNode(textOf(sid, p.child)));
+      e.onclick = () => userAction(sid, p.action.name, resolveCtx(p.action.context, sf.data), id);
+      break; }
+    case "TextField": {
+      e = h("label", "r-field", id); e.appendChild(document.createTextNode(v(p.label) || ""));
+      const inp = document.createElement("input"); inp.id = `${sid}-${id}`; inp.type = p.textFieldType === "email" ? "email" : "text";
+      inp.value = getPath(sf.data, p.text.path) ?? "";
+      inp.oninput = () => { setPath(sf.data, p.text.path, inp.value); session.draft[sid] = clone(sf.data.form || {}); if (session.tab !== "payload") renderInspect(); };
+      e.appendChild(inp); break; }
+    case "MultipleChoice": {
+      e = h("label", "r-field", id); e.appendChild(document.createTextNode(v(p.label) || ""));
+      const sel = document.createElement("select"); sel.id = `${sid}-${id}`;
+      for (const o of p.options) { const op = document.createElement("option"); op.value = o.value; op.textContent = v(o.label); sel.appendChild(op); }
+      sel.value = getPath(sf.data, p.selections.path) ?? "";
+      sel.onchange = () => { setPath(sf.data, p.selections.path, sel.value); session.draft[sid] = clone(sf.data.form || {}); if (session.tab !== "payload") renderInspect(); };
+      e.appendChild(sel); break; }
+    case "Metric": {
+      e = h("div", "r-metric", id);
+      const tone = { danger: "var(--bad)", warning: "var(--warn)", success: "var(--good)" }[p.tone];
+      e.insertAdjacentHTML("beforeend", `<small>${esc(v(p.label))}${tone ? `<span class="tone" style="background:${tone}"></span>` : ""}</small><b>${p.format === "money" ? money(v(p.value)) : esc(v(p.value))}</b>`);
+      break; }
+    case "Alert": e = h("div", "r-alert " + (p.tone || ""), id); e.insertAdjacentHTML("beforeend", `<b>${esc(v(p.title))}</b>${esc(v(p.body) || "")}`); break;
+    case "Badge": e = h("span", "badge " + (p.tone || ""), id); e.appendChild(document.createTextNode(v(p.label))); break;
+    case "DataTable": {
+      e = h("div", "r-tablewrap", id);
+      const t = document.createElement("table"); t.className = "r-table";
+      t.innerHTML = `<thead><tr>${p.columns.map((c) => `<th class="${c.type === "money" ? "num" : ""}">${esc(c.label)}</th>`).join("")}${p.rowActions?.length ? "<th></th>" : ""}</tr></thead>`;
+      const tb = document.createElement("tbody");
+      for (const r of p.rows) {
+        const tr = document.createElement("tr");
+        if (state.changed === r.id) tr.className = "changed";
+        tr.innerHTML = p.columns.map((c) => {
+          const x = r[c.key];
+          const cell = c.type === "money" ? money(x) : c.type === "badge" ? `<span class="badge ${esc(x)}">${esc(x)}</span>` : esc(x);
+          return `<td class="${c.type === "money" ? "num" : ""}">${cell}</td>`;
+        }).join("");
+        if (p.rowActions?.length) {
+          const td = document.createElement("td");
+          for (const ra of p.rowActions) { const b = document.createElement("button"); b.className = "r-btn"; b.type = "button"; b.textContent = ra.label; b.onclick = () => userAction(sid, ra.name, { resource: p.resource, id: r.id }, id); td.appendChild(b); }
+          tr.appendChild(td);
+        }
+        tb.appendChild(tr);
+      }
+      t.appendChild(tb); e.appendChild(t); break; }
+    default: e = h("div", "r-cap", id); e.textContent = `Unknown component ${type}`;
+  }
+  return e;
+}
+function textOf(sid, id) { const c = state.surfaces[sid].components[id]; const t = c && c.component.Text; return t ? resolve(t.text, state.surfaces[sid].data) : ""; }
+
+function userAction(sid, name, ctx) {
+  const st = session.steps[session.i];
+  if (st.await === name) {
+    session.lastCtx = name === "mark_paid" ? ctx : null;
+    if (name === "save_record" && ctx.data) session.draft[sid] = clone(ctx.data);
+    go(session.i + 1, true);
+    return;
+  }
+  if (name === "close_surface") { hint("Cancel would send a userAction named close_surface, and the server would reply with deleteSurface. It is not part of this walkthrough.", true); return; }
+  const idx = session.steps.findIndex((x, k) => k > session.i && x.await === name);
+  hint(idx >= 0 ? `This click is step ${idx + 1}. Keep stepping and the lab will stop there for you.` : "This button already did its job earlier in the walkthrough. Restart to try it again.", true);
+}
+function hint(t, on) { const e = $("#hint"); e.textContent = t; e.classList.toggle("on", !!on && !!t); }
+
+/* ---- inspector ---- */
+function highlight(json) {
+  return esc(json).replace(/("(?:\\.|[^"\\])*")(\s*:)?|\b(true|false|null)\b|-?\b\d+(?:\.\d+)?\b|^#.*$/gm, (m, s, colon, lit) => {
+    if (m.startsWith("#")) return `<span class="jc">${m}</span>`;
+    if (s) return colon ? `<span class="jk">${s}</span>${colon}` : `<span class="js">${s}</span>`;
+    if (lit) return `<span class="jl">${m}</span>`;
+    return `<span class="jn">${m}</span>`;
+  });
+}
+function codeBlock(text, metaHtml, note) {
+  return `${metaHtml || ""}<div class="codewrap"><button class="btn copy" type="button" data-copy>Copy</button><pre class="code" tabindex="0">${highlight(text)}</pre></div>${note ? `<p class="note">${note}</p>` : ""}`;
+}
+function renderInspect() {
+  const st = session.steps[session.i];
+  const box = $("#inspect");
+  let html = "";
+  if (session.tab === "payload") {
+    const txt = st.payloadText ? st.payloadText(state) : JSON.stringify(st.payload ? st.payload(state) : {}, null, 2);
+    const meta = `<div class="meta"><span class="pill" style="--col:${LCOL[st.from]}">${esc(LANES[LI[st.from]].name)} → ${esc(LANES[LI[st.to]].name)}</span>${(st.meta || []).map((m) => `<code>${esc(m)}</code>`).join("")}</div>`;
+    html = codeBlock(txt, meta);
+  } else if (session.tab === "state") {
+    const view = { surfaces: Object.fromEntries(Object.keys(state.surfaces).map((sid) => [sid, stateView(state, sid)])), chatParts: state.chat.map((m) => m.role === "user" ? { user: m.text } : { assistant: m.parts.map((p) => p.t === "text" ? { text: p.text.slice(0, 40) + "…" } : p.t === "tool" ? { tool: p.label, status: p.status } : { surface: p.sid }) }) };
+    html = codeBlock(JSON.stringify(view, null, 2), "", "This is what the client holds in memory. Type in a form field in the preview and watch dataModel change.");
+  } else if (session.tab === "llm") {
+    html = codeBlock(state.llm.length ? JSON.stringify(state.llm, null, 2) : "# The LLM has not been called yet in this scenario.", "", "The messages array the server sends to the LLM. It grows with each tool call and each tool result. The model never sees the database or the screen.");
+  } else {
+    const tbl = (name, rows, cols) => `<div><h5>${name}</h5><div class="r-tablewrap"><table class="r-table"><thead><tr>${cols.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr class="${state.changed === r.id ? "changed" : ""}">${cols.map((c) => `<td>${c === "amount" ? money(r[c]) : c === "status" ? `<span class="badge ${esc(r[c])}">${esc(r[c])}</span>` : esc(r[c] ?? "")}</td>`).join("")}</tr>`).join("")}</tbody></table></div></div>`;
+    html = `<div class="dbt">${tbl("invoices", state.db.invoices, ["id", "number", "customer_name", "amount", "status"])}${tbl("customers", state.db.customers, ["id", "name", "email", "city", "status"])}</div><p class="note">Rows highlighted in green were changed by the current scenario.</p>`;
+  }
+  box.innerHTML = html;
+  box.querySelectorAll("[data-copy]").forEach((b) => b.onclick = () => {
+    const pre = b.nextElementSibling;
+    navigator.clipboard?.writeText(pre.textContent).then(() => { b.textContent = "Copied"; setTimeout(() => b.textContent = "Copy", 1200); })
+      .catch(() => { const r = document.createRange(); r.selectNodeContents(pre); const s = getSelection(); s.removeAllRanges(); s.addRange(r); });
+  });
+}
+
+/* ---- controls ---- */
+function next() {
+  const st = session.steps[session.i];
+  if (st.await === "mark_paid") session.lastCtx = { resource: "invoices", id: 1043 };
+  if (st.await === "save_record") { const sid = Object.keys(state.surfaces)[0]; const cur = clone(state.surfaces[sid]?.data?.form || {}); session.draft[sid] = { ...cur, email: cur.email || "hello@acmerobotics.io", city: cur.city || "Austin" }; }
+  if (session.i < session.steps.length - 1) go(session.i + 1, true);
+}
+function stop() { clearInterval(session.timer); session.timer = null; $("#play").textContent = "Auto-play"; }
+function play() {
+  if (session.timer) return stop();
+  $("#play").textContent = "Pause";
+  session.timer = setInterval(() => {
+    const st = session.steps[session.i];
+    if (st.await || session.i >= session.steps.length - 1) return stop();
+    next();
+  }, 2400);
+}
+
+SCENARIOS.forEach((sc) => {
+  const b = document.createElement("button"); b.type = "button"; b.role = "tab"; b.dataset.id = sc.id; b.textContent = sc.name;
+  b.onclick = () => load(sc); $("#scenarios").appendChild(b);
+});
+$("#lanes").innerHTML = LANES.map((l) => `<div class="lane"><b><span class="chip" style="background:${l.col}"></span>${l.name}</b><small>${l.sub}</small></div>`).join("");
+$("#prev").onclick = () => { stop(); go(session.i - 1, false); };
+$("#next").onclick = () => { stop(); next(); };
+$("#play").onclick = play;
+$("#reset").onclick = () => load(session.sc, session.msg);
+$("#showids").onchange = (e) => $("#chat").classList.toggle("showids", e.target.checked);
+document.querySelectorAll("#itabs button").forEach((b) => b.onclick = () => {
+  session.tab = b.dataset.t; document.querySelectorAll("#itabs button").forEach((x) => x.setAttribute("aria-selected", String(x === b))); renderInspect();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.target.matches("input, select, textarea")) return;
+  if (e.key === "ArrowRight") { stop(); next(); } else if (e.key === "ArrowLeft") { stop(); go(session.i - 1, false); }
+});
+$("#composer").onsubmit = (e) => {
+  e.preventDefault();
+  const t = $("#msg").value.trim(); if (!t) return;
+  const low = t.toLowerCase();
+  const sc = /(add|create|new|register).*(customer|client)|customer.*(add|new)/.test(low) ? SCENARIOS[1]
+    : /(report|risk|analy|suspicious|summary|insight|design)/.test(low) ? SCENARIOS[2] : SCENARIOS[0];
+  $("#msg").value = "";
+  load(sc, t);
+  hint(`Picked the "${sc.name}" walkthrough for your message. Press Next step to send it.`, false);
+};
+load(SCENARIOS[0]);
+})();
+</script>
