@@ -1,6 +1,6 @@
 # NextERP: an agentic ERP for SMBs
 
-> Chat-first ERP for small businesses: an AI agent reads and changes your data and answers with live Google A2UI tables, forms and charts that sync in realtime. FastAPI + Next.js.
+> An agent-first ERP, plus a blueprint for building one: a working ERP where an AI agent runs the business through live Google A2UI screens, and a guide to turning any existing API-based ERP into one. FastAPI + Next.js.
 
 NextERP is a chat-first ERP. An AI agent reads and changes the business data and answers with **live Google A2UI surfaces** (tables, forms, charts, dashboards) inside the chat.
 The traditional screens (dashboard, CRUD lists, forms, reports) are **built from the same A2UI screens on the server**, so the agent and the UI share one rendering system.
